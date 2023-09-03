@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
@@ -13,11 +14,57 @@ import (
 	"time"
 )
 
+type ItemStatus int
+
+const (
+	ItemStatusDoing ItemStatus = iota
+	ItemStatusDone
+	ItemStatusDeleted
+)
+
+var allItemStatuses = [3]string{"Doing","Done","Deleted"}
+
+func (item ItemStatus) String() string {
+	return allItemStatuses[item]
+}
+
+func parseStrToItemStatus(s string) (ItemStatus,error)  {
+	for i := range allItemStatuses{
+		if allItemStatuses[i] == s {
+			return ItemStatus(i), nil
+		}
+	}
+
+	return ItemStatus(0), errors.New("Invalid status string!")
+}
+
+func (item *ItemStatus) Scan(value interface{}) error  {
+	bytes, ok := value.([]byte)
+
+	if !ok {
+		return errors.New(fmt.Sprintf("fail to scan data from sql: %s",value))
+	}
+
+	v, err := parseStrToItemStatus(string(bytes))
+
+	if err != nil {
+		return errors.New(fmt.Sprintf("fail to scan data from sql: %s",value))
+	}
+
+	*item = v
+
+	return nil
+}
+
+func (item *ItemStatus) MarshalJSON() ([]byte, error)  {
+	return []byte(fmt.Sprintf("\"%s\"",item.String())), nil
+}
+
 type TodoItem struct {
 	Id          int        `json:"id" gorm:"column:id;`
 	Title       string     `json:"title gorm:"column:title;"`
 	Description string     `json:"description" gorm:"column:description;`
-	Status      string     `json:"status" gorm:"column:status;`
+	Status      *ItemStatus     `json:"status" gorm:"column:status;`
 	CreatedAt   *time.Time `json:"created_at" gorm:"column:created_at;`
 	UpdatedAt   *time.Time `json:"updated_at,omitempty" gorm:"column:updated_at;`
 }
