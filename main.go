@@ -36,6 +36,16 @@ func (TodoItemCreation) TableName() string  {
 	return TodoItem{}.TableName()
 }
 
+type TodoItemUpdate struct {
+	Title       *string     `json:"title" gorm:"column:title;"`
+	Description *string     `json:"description" gorm:"column:description;"`
+	Status      *string     `json:"status" gorm:"column:status;"`
+}
+
+func (TodoItemUpdate) TableName() string  {
+	return TodoItem{}.TableName()
+}
+
 func main() {
 	fmt.Println("BEGIN")
 	// refer https://github.com/go-sql-driver/mysql#dsn-data-source-name for details
@@ -75,7 +85,7 @@ func main() {
 			items.POST("", CreatItem(db))
 			items.GET("")
 			items.GET("/:id",GetItem(db))
-			items.PATCH("/:id")
+			items.PATCH("/:id",UpdateItem(db))
 			items.DELETE("/:id")
 		}
 	}
@@ -101,6 +111,9 @@ func CreatItem(db *gorm.DB) func(*gin.Context) {
 
 			return
 		}
+
+		fmt.Println("data2: ",data)
+		fmt.Println("data: ",&data)
 
 		if err := db.Create(&data).Error ; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -131,7 +144,7 @@ func GetItem(db *gorm.DB) func(*gin.Context) {
 			return
 		}
 
-		data.Id = id
+		//data.Id = id
 
 		if err := db.Where("id = ?",id).First(&data).Error ; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -143,6 +156,51 @@ func GetItem(db *gorm.DB) func(*gin.Context) {
 
 		c.JSON(http.StatusOK, gin.H{
 			"data": data,
+		})
+	}
+
+}
+
+func UpdateItem(db *gorm.DB) func(*gin.Context) {
+
+	return func(c *gin.Context) {
+		var data TodoItemUpdate
+
+		id, err := strconv.Atoi(c.Param("id"))
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+
+			return
+		}
+
+		fmt.Println("id: ",id)
+
+
+		//parse json use ShouldBindJSON, it works
+		if err := c.ShouldBindJSON(&data) ; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+
+			return
+		}
+
+		fmt.Println("data2: ",data)
+		fmt.Println("data3: ",string(*data.Title))
+
+		if err := db.Where("id = ?",id).Updates(&data).Error ; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"data": true,
 		})
 	}
 
