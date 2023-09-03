@@ -20,6 +20,17 @@ type TodoItem struct {
 	UpdatedAt   *time.Time `json:"updated_at,omitempty"`
 }
 
+type TodoItemCreation struct {
+	Id          int        `json:"-" gorm:"column:id;`
+	Title       string     `json:"title" gorm:"column:title;"`
+	Description string     `json:"description" gorm:"column:description;"`
+	Status      string     `json:"status" gorm:"column:description;"`
+}
+
+func (TodoItemCreation) TableName() string  {
+	return "todo_items"
+}
+
 func main() {
 	// refer https://github.com/go-sql-driver/mysql#dsn-data-source-name for details
 	dsn := os.Getenv("DB_CONN_STR")
@@ -55,7 +66,7 @@ func main() {
 	{
 		items := v1.Group("/items")
 		{
-			items.POST("")
+			items.POST("", CreatItem(db))
 			items.GET("")
 			items.GET("/:id")
 			items.PATCH("/:id")
@@ -70,4 +81,31 @@ func main() {
 	})
 	r.Run(":3000") // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 
+}
+
+func CreatItem(db *gorm.DB) func(*gin.Context) {
+
+	return func(c *gin.Context) {
+		var data TodoItemCreation
+
+		if err := c.ShouldBind(&data) ; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+
+			return
+		}
+
+		if err := db.Create(&data).Error ; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"data": data.Id,
+		})
+	}
 }
