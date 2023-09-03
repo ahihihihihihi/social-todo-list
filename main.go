@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
@@ -86,7 +87,7 @@ func main() {
 			items.GET("")
 			items.GET("/:id",GetItem(db))
 			items.PATCH("/:id",UpdateItem(db))
-			items.DELETE("/:id")
+			items.DELETE("/:id",DeleteItem(db))
 		}
 	}
 
@@ -188,10 +189,52 @@ func UpdateItem(db *gorm.DB) func(*gin.Context) {
 			return
 		}
 
-		fmt.Println("data2: ",data)
-		fmt.Println("data3: ",string(*data.Title))
+		//fmt.Println("data2: ",data)
+		//fmt.Printf("data %v, %T: ",data,data)
+		//fmt.Println("data3: ",string(*data.Title))
+		res2B, _ := json.Marshal(data)
+		fmt.Println(string(res2B))
 
 		if err := db.Where("id = ?",id).Updates(&data).Error ; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"data": true,
+		})
+	}
+
+}
+
+func DeleteItem(db *gorm.DB) func(*gin.Context) {
+
+	return func(c *gin.Context) {
+
+		id, err := strconv.Atoi(c.Param("id"))
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+
+			return
+		}
+
+		//if err := db.Table(TodoItem{}.TableName()).Where("id = ?",id).Delete(nil).Error ; err != nil {
+		//	c.JSON(http.StatusBadRequest, gin.H{
+		//		"error": err.Error(),
+		//	})
+		//
+		//	return
+		//}
+
+		if err := db.Table(TodoItem{}.TableName()).Where("id = ?",id).Updates(map[string]interface{}{
+			"status":"Deleted",
+		}).Error ; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err.Error(),
 			})
