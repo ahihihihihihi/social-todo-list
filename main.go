@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -22,14 +24,14 @@ const (
 	ItemStatusDeleted
 )
 
-var allItemStatuses = [3]string{"Doing","Done","Deleted"}
+var allItemStatuses = [3]string{"Doing", "Done", "Deleted"}
 
 func (item ItemStatus) String() string {
 	return allItemStatuses[item]
 }
 
-func parseStrToItemStatus(s string) (ItemStatus,error)  {
-	for i := range allItemStatuses{
+func parseStrToItemStatus(s string) (ItemStatus, error) {
+	for i := range allItemStatuses {
 		if allItemStatuses[i] == s {
 			return ItemStatus(i), nil
 		}
@@ -38,17 +40,17 @@ func parseStrToItemStatus(s string) (ItemStatus,error)  {
 	return ItemStatus(0), errors.New("Invalid status string!")
 }
 
-func (item *ItemStatus) Scan(value interface{}) error  {
+func (item *ItemStatus) Scan(value interface{}) error {
 	bytes, ok := value.([]byte)
 
 	if !ok {
-		return errors.New(fmt.Sprintf("fail to scan data from sql: %s",value))
+		return errors.New(fmt.Sprintf("fail to scan data from sql: %s", value))
 	}
 
 	v, err := parseStrToItemStatus(string(bytes))
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("fail to scan data from sql: %s",value))
+		return errors.New(fmt.Sprintf("fail to scan data from sql: %s", value))
 	}
 
 	*item = v
@@ -56,53 +58,85 @@ func (item *ItemStatus) Scan(value interface{}) error  {
 	return nil
 }
 
-func (item *ItemStatus) MarshalJSON() ([]byte, error)  {
-	return []byte(fmt.Sprintf("\"%s\"",item.String())), nil
+func (item *ItemStatus) Value() (driver.Value, error) {
+	if item == nil {
+		return nil, nil
+	}
+
+	return item.String(), nil
+}
+
+func (item *ItemStatus) MarshalJSON() ([]byte, error) {
+	if item == nil {
+		return nil, nil
+	}
+
+	return []byte(fmt.Sprintf("\"%s\"", item.String())), nil
+}
+
+func (item *ItemStatus) UnmarshalJSON(data []byte) error {
+	//fmt.Println("UnmarshalJSON 1: ", data)
+
+	str := strings.ReplaceAll(string(data), "\"", "")
+
+	//fmt.Println("UnmarshalJSON 2: ", str)
+
+	itemValue, err := parseStrToItemStatus(str)
+
+	if err != nil {
+		return err
+	}
+
+	//fmt.Println("UnmarshalJSON 3: ", itemValue)
+
+	*item = itemValue
+
+	return nil
 }
 
 type TodoItem struct {
-	Id          int        `json:"id" gorm:"column:id;`
-	Title       string     `json:"title gorm:"column:title;"`
-	Description string     `json:"description" gorm:"column:description;`
-	Status      *ItemStatus     `json:"status" gorm:"column:status;`
-	CreatedAt   *time.Time `json:"created_at" gorm:"column:created_at;`
-	UpdatedAt   *time.Time `json:"updated_at,omitempty" gorm:"column:updated_at;`
+	Id          int         `json:"id" gorm:"column:id;`
+	Title       string      `json:"title gorm:"column:title;"`
+	Description string      `json:"description" gorm:"column:description;`
+	Status      *ItemStatus `json:"status" gorm:"column:status;`
+	CreatedAt   *time.Time  `json:"created_at" gorm:"column:created_at;`
+	UpdatedAt   *time.Time  `json:"updated_at,omitempty" gorm:"column:updated_at;`
 }
 
-func (TodoItem) TableName() string  {
+func (TodoItem) TableName() string {
 	return "todo_items"
 }
 
 type TodoItemCreation struct {
-	Id          int        `json:"-" gorm:"column:id;`
-	Title       string     `json:"title" gorm:"column:title;"`
-	Description string     `json:"description" gorm:"column:description;"`
-	//Status      string     `json:"status" gorm:"column:description;"`
+	Id          int         `json:"-" gorm:"column:id;`
+	Title       string      `json:"title" gorm:"column:title;"`
+	Description string      `json:"description" gorm:"column:description;"`
+	Status      *ItemStatus `json:"status" gorm:"column:status;"`
 }
 
-func (TodoItemCreation) TableName() string  {
+func (TodoItemCreation) TableName() string {
 	return TodoItem{}.TableName()
 }
 
 type TodoItemUpdate struct {
-	Title       *string     `json:"title" gorm:"column:title;"`
-	Description *string     `json:"description" gorm:"column:description;"`
-	Status      *string     `json:"status" gorm:"column:status;"`
+	Title       *string `json:"title" gorm:"column:title;"`
+	Description *string `json:"description" gorm:"column:description;"`
+	Status      *string `json:"status" gorm:"column:status;"`
 }
 
-func (TodoItemUpdate) TableName() string  {
+func (TodoItemUpdate) TableName() string {
 	return TodoItem{}.TableName()
 }
 
 type Paging struct {
-	Page int `json:"page" form:"page"`
-	Limit int `json:"limit" form:"limit"`
+	Page  int   `json:"page" form:"page"`
+	Limit int   `json:"limit" form:"limit"`
 	Total int64 `json:"total" form:"-"`
 }
 
-func (p *Paging) Process()  {
+func (p *Paging) Process() {
 	if p.Page <= 0 {
-p.Page = 1
+		p.Page = 1
 	}
 	if p.Limit <= 0 || p.Limit >= 100 {
 		p.Limit = 10
@@ -146,10 +180,10 @@ func main() {
 		items := v1.Group("/items")
 		{
 			items.POST("", CreatItem(db))
-			items.GET("",ListItem(db))
-			items.GET("/:id",GetItem(db))
-			items.PATCH("/:id",UpdateItem(db))
-			items.DELETE("/:id",DeleteItem(db))
+			items.GET("", ListItem(db))
+			items.GET("/:id", GetItem(db))
+			items.PATCH("/:id", UpdateItem(db))
+			items.DELETE("/:id", DeleteItem(db))
 		}
 	}
 
@@ -167,7 +201,7 @@ func CreatItem(db *gorm.DB) func(*gin.Context) {
 	return func(c *gin.Context) {
 		var data TodoItemCreation
 
-		if err := c.ShouldBind(&data) ; err != nil {
+		if err := c.ShouldBind(&data); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err.Error(),
 			})
@@ -175,10 +209,10 @@ func CreatItem(db *gorm.DB) func(*gin.Context) {
 			return
 		}
 
-		fmt.Println("data2: ",data)
-		fmt.Println("data: ",&data)
+		fmt.Println("data2: ", data)
+		fmt.Println("data: ", &data)
 
-		if err := db.Create(&data).Error ; err != nil {
+		if err := db.Create(&data).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err.Error(),
 			})
@@ -209,7 +243,7 @@ func GetItem(db *gorm.DB) func(*gin.Context) {
 
 		//data.Id = id
 
-		if err := db.Where("id = ?",id).First(&data).Error ; err != nil {
+		if err := db.Where("id = ?", id).First(&data).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err.Error(),
 			})
@@ -239,11 +273,10 @@ func UpdateItem(db *gorm.DB) func(*gin.Context) {
 			return
 		}
 
-		fmt.Println("id: ",id)
-
+		fmt.Println("id: ", id)
 
 		//parse json use ShouldBindJSON, it works
-		if err := c.ShouldBindJSON(&data) ; err != nil {
+		if err := c.ShouldBindJSON(&data); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err.Error(),
 			})
@@ -257,7 +290,7 @@ func UpdateItem(db *gorm.DB) func(*gin.Context) {
 		res2B, _ := json.Marshal(data)
 		fmt.Println(string(res2B))
 
-		if err := db.Where("id = ?",id).Updates(&data).Error ; err != nil {
+		if err := db.Where("id = ?", id).Updates(&data).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err.Error(),
 			})
@@ -294,9 +327,9 @@ func DeleteItem(db *gorm.DB) func(*gin.Context) {
 		//	return
 		//}
 
-		if err := db.Table(TodoItem{}.TableName()).Where("id = ?",id).Updates(map[string]interface{}{
-			"status":"Deleted",
-		}).Error ; err != nil {
+		if err := db.Table(TodoItem{}.TableName()).Where("id = ?", id).Updates(map[string]interface{}{
+			"status": "Deleted",
+		}).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err.Error(),
 			})
@@ -317,7 +350,7 @@ func ListItem(db *gorm.DB) func(*gin.Context) {
 
 		var paging Paging
 
-		if err := c.ShouldBind(&paging) ; err != nil {
+		if err := c.ShouldBind(&paging); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err.Error(),
 			})
@@ -329,9 +362,9 @@ func ListItem(db *gorm.DB) func(*gin.Context) {
 
 		var result []TodoItem
 
-		db = db.Where("status <> ?","Deleted")
+		db = db.Where("status <> ?", "Deleted")
 
-		if err := db.Table(TodoItem{}.TableName()).Count(&paging.Total).Error ; err != nil {
+		if err := db.Table(TodoItem{}.TableName()).Count(&paging.Total).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err.Error(),
 			})
@@ -342,7 +375,7 @@ func ListItem(db *gorm.DB) func(*gin.Context) {
 		if err := db.Order("id desc").
 			Offset((paging.Page - 1) * paging.Limit).
 			Limit(paging.Limit).
-			Find(&result).Error ; err != nil {
+			Find(&result).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err.Error(),
 			})
@@ -351,8 +384,8 @@ func ListItem(db *gorm.DB) func(*gin.Context) {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"data": result,
-			"paging":paging,
+			"data":   result,
+			"paging": paging,
 		})
 	}
 
