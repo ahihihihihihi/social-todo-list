@@ -2,7 +2,7 @@ package main
 
 import (
 	//"database/sql/driver"
-	"encoding/json"
+	//"encoding/json"
 	//"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -14,7 +14,7 @@ import (
 	"social-todo-list/common"
 	"social-todo-list/modules/item/model"
 	ginitem "social-todo-list/modules/item/transport/gin"
-	"strconv"
+	//"strconv"
 	//"strings"
 	//"time"
 )
@@ -59,7 +59,7 @@ func main() {
 			items.GET("", ListItem(db))
 			items.GET("/:id", ginitem.GetItem(db))
 			items.PATCH("/:id", ginitem.UpdateItem(db))
-			items.DELETE("/:id", DeleteItem(db))
+			items.DELETE("/:id", ginitem.DeleteItem(db))
 		}
 	}
 
@@ -72,87 +72,6 @@ func main() {
 
 }
 
-func UpdateItem(db *gorm.DB) func(*gin.Context) {
-
-	return func(c *gin.Context) {
-		var data model.TodoItemUpdate
-
-		id, err := strconv.Atoi(c.Param("id"))
-
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-
-			return
-		}
-
-		fmt.Println("id: ", id)
-
-		//parse json use ShouldBindJSON, it works
-		if err := c.ShouldBindJSON(&data); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-
-			return
-		}
-
-		//fmt.Println("data2: ",data)
-		//fmt.Printf("data %v, %T: ",data,data)
-		//fmt.Println("data3: ",string(*data.Title))
-		res2B, _ := json.Marshal(data)
-		fmt.Println(string(res2B))
-
-		if err := db.Where("id = ?", id).Updates(&data).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-
-			return
-		}
-
-		c.JSON(http.StatusOK, common.SimpleSuccessResponse(true))
-	}
-
-}
-
-func DeleteItem(db *gorm.DB) func(*gin.Context) {
-
-	return func(c *gin.Context) {
-
-		id, err := strconv.Atoi(c.Param("id"))
-
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-
-			return
-		}
-
-		//if err := db.Table(TodoItem{}.TableName()).Where("id = ?",id).Delete(nil).Error ; err != nil {
-		//	c.JSON(http.StatusBadRequest, gin.H{
-		//		"error": err.Error(),
-		//	})
-		//
-		//	return
-		//}
-
-		if err := db.Table(model.TodoItem{}.TableName()).Where("id = ?", id).Updates(map[string]interface{}{
-			"status": "Deleted",
-		}).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-
-			return
-		}
-
-		c.JSON(http.StatusOK, common.SimpleSuccessResponse(true))
-	}
-
-}
 
 func ListItem(db *gorm.DB) func(*gin.Context) {
 
