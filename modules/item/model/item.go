@@ -7,13 +7,14 @@ import (
 
 var (
 	ErrTiTleIsBlank = errors.New("Title can not be blank!")
+	ErrItemDeleted = errors.New("Item is deleted!")
 )
 
 type TodoItem struct {
 	common.SQLMODEL
-	Title       string      `json:"title gorm:"column:title;"`
-	Description string      `json:"description" gorm:"column:description;`
-	Status      *ItemStatus `json:"status" gorm:"column:status;`
+	Title       string      `json:"title" gorm:"column:title;"`
+	Description string      `json:"description" gorm:"column:description"`
+	Status      *ItemStatus `json:"status" gorm:"column:status"`
 }
 
 func (TodoItem) TableName() string {
@@ -21,7 +22,7 @@ func (TodoItem) TableName() string {
 }
 
 type TodoItemCreation struct {
-	Id          int         `json:"-" gorm:"column:id;`
+	Id          int         `json:"-" gorm:"column:id"`
 	Title       string      `json:"title" gorm:"column:title;"`
 	Description string      `json:"description" gorm:"column:description;"`
 	Status      *ItemStatus `json:"status" gorm:"column:status;"`

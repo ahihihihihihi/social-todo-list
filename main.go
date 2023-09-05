@@ -58,7 +58,7 @@ func main() {
 			items.POST("", ginitem.CreatItem(db))
 			items.GET("", ListItem(db))
 			items.GET("/:id", ginitem.GetItem(db))
-			items.PATCH("/:id", UpdateItem(db))
+			items.PATCH("/:id", ginitem.UpdateItem(db))
 			items.DELETE("/:id", DeleteItem(db))
 		}
 	}
