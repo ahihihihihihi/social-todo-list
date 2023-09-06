@@ -11,8 +11,8 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"social-todo-list/common"
-	"social-todo-list/modules/item/model"
+	//"social-todo-list/common"
+	//"social-todo-list/modules/item/model"
 	ginitem "social-todo-list/modules/item/transport/gin"
 	//"strconv"
 	//"strings"
@@ -56,7 +56,7 @@ func main() {
 		items := v1.Group("/items")
 		{
 			items.POST("", ginitem.CreatItem(db))
-			items.GET("", ListItem(db))
+			items.GET("", ginitem.ListItem(db))
 			items.GET("/:id", ginitem.GetItem(db))
 			items.PATCH("/:id", ginitem.UpdateItem(db))
 			items.DELETE("/:id", ginitem.DeleteItem(db))
@@ -72,47 +72,3 @@ func main() {
 
 }
 
-
-func ListItem(db *gorm.DB) func(*gin.Context) {
-
-	return func(c *gin.Context) {
-
-		var paging common.Paging
-
-		if err := c.ShouldBind(&paging); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-
-			return
-		}
-
-		paging.Process()
-
-		var result []model.TodoItem
-
-		db = db.Where("status <> ?", "Deleted")
-
-		if err := db.Table(model.TodoItem{}.TableName()).Count(&paging.Total).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-
-			return
-		}
-
-		if err := db.Order("id desc").
-			Offset((paging.Page - 1) * paging.Limit).
-			Limit(paging.Limit).
-			Find(&result).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-
-			return
-		}
-
-		c.JSON(http.StatusOK, common.NewSuccessResponse(result, paging, nil))
-	}
-
-}
