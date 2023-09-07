@@ -11,6 +11,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"social-todo-list/common"
+	"social-todo-list/middleware"
+
 	//"social-todo-list/common"
 	//"social-todo-list/modules/item/model"
 	ginitem "social-todo-list/modules/item/transport/gin"
@@ -44,6 +47,8 @@ func main() {
 
 	r := gin.Default()
 
+	r.Use(middleware.Recovery())
+
 	//CRUD: Create, Read, Update, Delete
 	//POST: /v1/items (create a new item)
 	//GET: /v1/items (list items) /v1/items?page=1
@@ -64,6 +69,11 @@ func main() {
 	}
 
 	r.GET("/ping", func(c *gin.Context) {
+		go func() {
+			defer common.Recovery()
+			fmt.Println([]int{}[0])
+		}()
+
 		c.JSON(http.StatusOK, gin.H{
 			"message": "pong",
 		})
