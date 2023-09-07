@@ -21,9 +21,7 @@ func UpdateItem(db *gorm.DB) func(*gin.Context) {
 		id, err := strconv.Atoi(c.Param("id"))
 
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
+			c.JSON(http.StatusBadRequest, common.ErrInvalidRequest(err))
 
 			return
 		}
@@ -32,9 +30,7 @@ func UpdateItem(db *gorm.DB) func(*gin.Context) {
 
 		//parse json use ShouldBindJSON, it works
 		if err := c.ShouldBindJSON(&data); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
+			c.JSON(http.StatusBadRequest, common.ErrInvalidRequest(err))
 
 			return
 		}
@@ -49,9 +45,7 @@ func UpdateItem(db *gorm.DB) func(*gin.Context) {
 		business := biz.NewUpdateItemBiz(store)
 
 		if	err := business.UpdateItemById(c.Request.Context(),id,&data)	; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
+			c.JSON(http.StatusBadRequest, err)
 
 			return
 		}

@@ -84,6 +84,30 @@ func ErrCannotListEntity(entity string, err error) *AppError  {
 		)
 }
 
+func ErrCannotDeleteEntity(entity string, err error) *AppError  {
+	return NewCustomError(
+		err,
+		fmt.Sprintf("Can not delete %s",strings.ToLower(entity)),
+		fmt.Sprintf("ErrCannotDelete%s",entity),
+	)
+}
+
+func ErrCannotUpdateEntity(entity string, err error) *AppError  {
+	return NewCustomError(
+		err,
+		fmt.Sprintf("Can not update %s",strings.ToLower(entity)),
+		fmt.Sprintf("ErrCannotUpdate%s",entity),
+	)
+}
+
+func ErrCannotGetEntity(entity string, err error) *AppError  {
+	return NewCustomError(
+		err,
+		fmt.Sprintf("Can not get %s",strings.ToLower(entity)),
+		fmt.Sprintf("ErrCannotGet%s",entity),
+	)
+}
+
 func ErrEntityDeleted(entity string, err error) *AppError  {
 	return NewCustomError(
 		err,
@@ -108,7 +132,7 @@ func ErrEntityNotFound(entity string, err error) *AppError  {
 	)
 }
 
-func ErrCanNotEntity(entity string, err error) *AppError  {
+func ErrCanNotCreateEntity(entity string, err error) *AppError  {
 	return NewCustomError(
 		err,
 		fmt.Sprintf("Can not create %s",strings.ToLower(entity)),

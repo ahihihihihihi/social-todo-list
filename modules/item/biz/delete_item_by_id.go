@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"social-todo-list/common"
 	"social-todo-list/modules/item/model"
 )
 
@@ -24,15 +25,18 @@ func (biz deleteItemBiz) DeleteItemById(ctx context.Context, id int) error {
 	data, err := biz.store.GetItem(ctx, map[string]interface{}{"id":id})
 
 	if err != nil {
-		return err
+		if err == common.RecordNotFound {
+			return common.ErrEntityNotFound(model.EntityName,err)
+		}
+		return common.ErrCannotDeleteEntity(model.EntityName,err)
 	}
 
 	if data.Status != nil && *data.Status == model.ItemStatusDeleted {
-		return model.ErrItemDeleted
+		return model.ErrItemDeletedNew
 	}
 
 	if err := biz.store.DeleteItem(ctx, map[string]interface{}{"id":id}) ; err !=nil {
-		return err
+		return common.ErrCannotDeleteEntity(model.EntityName,err)
 	}
 
 	return nil
